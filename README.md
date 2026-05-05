@@ -1,4 +1,5 @@
 # 🛡️ Project Aegis: Institutional-Grade Statistical Arbitrage Engine
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 
 A Python-based algorithmic trading proof-of-concept (PoC) demonstrating advanced statistical arbitrage, mean-reversion modeling, and execution friction in the cryptocurrency markets.
 
