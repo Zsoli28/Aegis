@@ -10,84 +10,78 @@ Most retail pairs-trading algorithms fail because they rely on static OLS regres
 The engine consists of three advanced layers:
 
 1. **The Kalman Engine (Adaptive State Estimation):** 
-   Tracks the dynamic hedge ratio ($\beta$) between assets (e.g., ARB vs. OP, or an N-dimensional basket). It uses an innovation-based adaptive measurement noise ($R_t$) to slow down during market chaos.
+   Tracks the dynamic hedge ratio ($\beta$) between assets. It uses an innovation-based adaptive measurement noise ($R_t$) to slow down during market chaos.
 2. **The CUSUM Watchdog (Regime Jump Detection):**
-   Monitors the standardized innovations. If a fundamental structural break occurs (e.g., a token unlock or network upgrade), the CUSUM accumulator triggers a massive covariance reset, preventing the bot from aggressively trading against a permanently shifted mean.
+   Monitors the standardized innovations. If a fundamental structural break occurs, the CUSUM accumulator triggers a massive covariance reset, preventing the bot from aggressively trading against a permanently shifted mean.
 3. **The Signal Layer (EV-Based Fee Hurdle):**
    Uses empirical quantiles (not Gaussian $\sigma$ thresholds, due to crypto's fat tails) to generate signals. Crucially, it calculates the Expected Value (EV) in dollars and implements a strict **Fee Hurdle**: it only enters a trade if the expected mean-reversion profit is at least 1.5x - 2.0x the total multi-leg transaction costs.
 
+## 📈 Performance & 1-Year Backtest
+To validate the model's robustness, the core engine was run across a 1-year period (over 105,000 candles on 5-minute intervals) through various market regimes. 
+
+The strategy exhibited sniper-like precision, only executing trades when the EV strictly covered the double-leg exchange fees. The maximum drawdown remained virtually flat at **-0.55%**, proving the extreme safety of the CUSUM watchdog.
+
+![1-Year Backtest Results](backtest_1year.png)
+
 ## 📊 Why it is NOT running live (The Quant Reality)
-Despite achieving a high simulated Sharpe Ratio (> 1.5) and minimal drawdowns in backtesting, this project is open-sourced as a research tool rather than a live bot. The quantitative analysis proved the **Basket Friction Paradox**:
-* To achieve true cointegration, you need a synthetic basket (e.g., 4 assets).
-* 4 assets require 8 individual market transactions for a full round-trip.
-* With standard exchange Taker fees (0.1%), the execution friction consumes the theoretical Alpha.
-* **Conclusion:** This strategy requires High-Frequency Trading (HFT) infrastructure and Maker (Limit) orders to be viable. Naive retail execution will slowly bleed capital.
+Despite achieving a high simulated Sharpe Ratio and minimal drawdowns in backtesting, this project is open-sourced as a research tool rather than a live retail bot. The quantitative analysis proved the **Execution Friction Paradox**:
+* Standard exchange Taker fees (0.1%) mean a full round-trip consumes a massive 0.4% of deployed capital per 2-asset pair (and 0.8% for a 4-asset basket).
+* The algorithm perfectly filters out noise and finds true cointegration, but finding spreads large enough to safely cover the fee hurdle is extremely rare (yielding few trades per year).
+* **Conclusion:** This strategy requires High-Frequency Trading (HFT) infrastructure and Maker (Limit) orders to be viably scaled. Naive retail market-order execution will slowly bleed capital.
 
 ## 🛠️ Files in this Repository
-* `kalman_engine.py`: The core Adaptive Kalman Filter with the CUSUM jump detection mathematics.
-* `aegis_screener.py`: The Quant Funnel. Scans the top 40 Binance coins, runs vectorized correlation matrices, and tests for Cointegration (ADF), Mean-Reversion (Hurst Exponent), and Half-Life.
-* `basket_engine.py`: The N-Dimensional Multivariate Kalman Filter for synthetic basket trading.
-* `aegis_live_paper_bot.py`: A daemonized live paper-trading script with API integration and local ledger logging.
+
+* `kalman_engine.py`  
+  The core mathematical engine containing the `AdaptiveKalmanWithJumpDetection` class (Joseph form updates, CUSUM jump detection, and adaptive $R_t$).
+* `aegisv1.2backtest.py`  
+  The robust 1-year historical backtesting suite. Downloads over 100k candles, simulates exact fee deductions, and calculates institutional metrics (Sharpe, Max Drawdown).
+* `aegis_screener.py`  
+  The Quant Funnel. Scans the top Binance coins, runs vectorized correlation matrices, and tests for Cointegration (ADF), Mean-Reversion (Hurst Exponent), and Half-Life.
+* `basket_engine.py`  
+  The N-Dimensional Multivariate Kalman Filter built for synthetic basket trading (e.g., Target vs. 3 correlated assets to filter idiosyncratic risk).
+* `aegis_live_paper_bot.py`  
+  A daemonized live paper-trading script with API integration. Warms up the matrices, calculates real-time Z-scores, handles jump detection, and logs simulated trades to a local ledger.
 
 ---
 
 ## 🚀 How to Run
 
 ### Prerequisites
-* **Python 3.9** or higher
+* **Python 3.9+**
 * Internet connection (for Binance API data fetching)
-* No Binance API keys are required for the Screener or the Paper Trading bot (they use public market data endpoints).
 
 ### 1. Installation
 
-Clone the repository and navigate into the directory:
+Clone the repository and install the dependencies:
 ```bash
-git clone [https://github.com/Zsoli28/Aegis.git
+git clone [https://github.com/Zsoli28/Project-Aegis.git
 cd Aegis
-```
 
-Create a virtual environment to keep dependencies clean (Recommended):
-```bash
-# On Windows:
+# Create virtual environment
 python -m venv venv
-venv\Scripts\activate
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
 
-# On macOS and Linux:
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Install the required quantitative and data science libraries:
-```bash
-pip install -r requirements.txt
+# Install required packages
+pip install numpy pandas requests statsmodels scipy matplotlib
 ```
 
 ### 2. Executing the Modules
 
-The project is modular. You can run different parts of the engine depending on your goals:
+**A) Run the 1-Year Backtest:**
+```bash
+python aegisv1.2backtest.py
+```
 
-#### A) Find Cointegrating Pairs (The Quant Funnel)
-To scan the top Binance assets and find pairs that pass the strict institutional criteria (ADF, Hurst, Half-Life, Fee Hurdle):
+**B) Find Cointegrating Pairs (The Screener):**
 ```bash
 python aegis_screener.py
 ```
-*Output:* A table of elite, tradeable pairs or a message indicating that no pairs passed the strict fee hurdle today.
 
-#### B) Run the Live Paper Trading Daemon
-To start the live bot that tracks ARB/OP (or any configured pair), calculates real-time Z-scores, handles CUSUM jump detection, and logs simulated trades:
+**C) Run the Live Paper Trading Daemon:**
 ```bash
 python aegis_live_paper_bot.py
 ```
-*Output:* The bot will warm up using the last 48 hours of data, then print real-time updates every 5 minutes. Trades are logged locally to `aegis_trades.csv`.
-
-#### C) Run Historical Backtests
-If you want to test the N-Dimensional Basket strategy or the standard pair strategy on historical data:
-```bash
-python basket_engine.py
-# or
-python kalman_engine.py
-```
-*Output:* Terminal logs of the total simulated Gross/Net PnL, Sharpe Ratio, Max Drawdown, and a matplotlib chart of the equity curve.
 
 ---
 *Disclaimer: This repository is for educational and research purposes only. It is not financial advice.*
