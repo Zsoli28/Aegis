@@ -21,7 +21,7 @@ To validate the model's robustness, the core engine was run across a 1-year peri
 
 The strategy exhibited sniper-like precision, only executing trades when the EV strictly covered the double-leg exchange fees. The maximum drawdown remained virtually flat at **-0.55%**, proving the extreme safety of the CUSUM watchdog.
 
-![1-Year Backtest Results](backtest_1year.png)
+![1-Year Backtest Results](https://github.com/Zsoli28/Aegis/blob/main/fig/backtest_1year.png?raw=true)
 
 ## 📊 Why it is NOT running live (The Quant Reality)
 Despite achieving a high simulated Sharpe Ratio and minimal drawdowns in backtesting, this project is open-sourced as a research tool rather than a live retail bot. The quantitative analysis proved the **Execution Friction Paradox**:
